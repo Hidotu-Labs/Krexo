@@ -3,8 +3,10 @@
 
 static EFI_SYSTEM_TABLE* gST = NULL;
 EFI_BOOT_SERVICES *gBS = NULL;
+EFI_HANDLE gImageHandle = NULL;
 
-void uefi_init_debug(EFI_SYSTEM_TABLE* SystemTable) {
+void uefi_init_debug(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable) {
+    gImageHandle = ImageHandle;
     gST = SystemTable;
     gBS = SystemTable->BootServices;
 }

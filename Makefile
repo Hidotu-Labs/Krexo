@@ -25,8 +25,8 @@ uefi/%.o: uefi/%.c
 common/lib/printf_uefi.o: common/lib/printf.c
 	$(CC_UEFI) $(CFLAGS_UEFI) -c $< -o $@
 
-uefi_boot: uefi/main.o uefi/debug.o uefi/mmap.o common/lib/printf_uefi.o
-	$(LD_UEFI) $(LDFLAGS_UEFI) uefi/main.o uefi/debug.o uefi/mmap.o common/lib/printf_uefi.o -out:boot.efi
+uefi_boot: uefi/main.o uefi/debug.o uefi/mmap.o uefi/gop.o common/lib/printf_uefi.o
+	$(LD_UEFI) $(LDFLAGS_UEFI) uefi/main.o uefi/debug.o uefi/mmap.o uefi/gop.o common/lib/printf_uefi.o -out:boot.efi
 
 # BIOS build
 bios/stage1.bin: bios/stage1.s
