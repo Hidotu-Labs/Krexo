@@ -2,9 +2,11 @@
 #include <common/kprint.h>
 
 static EFI_SYSTEM_TABLE* gST = NULL;
+EFI_BOOT_SERVICES *gBS = NULL;
 
 void uefi_init_debug(EFI_SYSTEM_TABLE* SystemTable) {
     gST = SystemTable;
+    gBS = SystemTable->BootServices;
 }
 
 void debug_putc(char c) {

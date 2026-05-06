@@ -25,8 +25,8 @@ uefi/%.o: uefi/%.c
 common/lib/printf_uefi.o: common/lib/printf.c
 	$(CC_UEFI) $(CFLAGS_UEFI) -c $< -o $@
 
-uefi_boot: uefi/main.o uefi/debug.o common/lib/printf_uefi.o
-	$(LD_UEFI) $(LDFLAGS_UEFI) uefi/main.o uefi/debug.o common/lib/printf_uefi.o -out:boot.efi
+uefi_boot: uefi/main.o uefi/debug.o uefi/mmap.o common/lib/printf_uefi.o
+	$(LD_UEFI) $(LDFLAGS_UEFI) uefi/main.o uefi/debug.o uefi/mmap.o common/lib/printf_uefi.o -out:boot.efi
 
 # BIOS build
 bios/stage1.bin: bios/stage1.s
@@ -35,10 +35,13 @@ bios/stage1.bin: bios/stage1.s
 bios/stage2.o: bios/stage2.c
 	$(CC_BIOS) $(CFLAGS_BIOS) -c $< -o $@
 
+bios/mmap.o: bios/mmap.c
+	$(CC_BIOS) $(CFLAGS_BIOS) -c $< -o $@
+
 common/lib/printf_bios.o: common/lib/printf.c
 	$(CC_BIOS) $(CFLAGS_BIOS) -c $< -o $@
 
-bios/stage2.bin: bios/stage2.o common/lib/printf_bios.o
+bios/stage2.bin: bios/stage2.o bios/mmap.o common/lib/printf_bios.o
 	$(LD_BIOS) $(LDFLAGS_BIOS) $^ -o $@
 
 bios_boot: bios/stage1.bin bios/stage2.bin

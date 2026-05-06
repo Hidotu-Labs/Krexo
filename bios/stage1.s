@@ -13,6 +13,9 @@ start:
     mov si, msg_load
     call print_string
 
+    ; Query memory map using INT 0x15 E820
+    call get_memory_map
+
     ; Load Stage 2 from disk
     mov di, 5 ; Retry count
 .retry:
@@ -73,10 +76,59 @@ disk_error:
     call print_string
     jmp $
 
+mmap_error:
+    mov si, msg_mmap
+    call print_string
+    jmp $
+
+; Get memory map using E820
+; Stores entry count at 0x7000, entries at 0x7010
+get_memory_map:
+    mov di, 0x7010          ; Destination for entries
+    xor ebx, ebx            ; Continuation value (must be 0 on first call)
+    mov byte [MMAP_ENTRIES], 0
+
+.next_entry:
+    mov eax, 0xE820         ; Function number
+    mov ecx, 24             ; Entry size (ACPI 3.0+)
+    mov edx, 0x534D4150     ; 'SMAP' signature
+    int 0x15
+    jc .mmap_failed         ; Carry = error
+    cmp eax, 0x534D4150     ; Check signature
+    jne .mmap_failed
+
+    ; Entry was written to DI, advance pointer
+    add di, 24
+    inc byte [MMAP_ENTRIES]
+
+    ; Check if we've reached max entries (64)
+    mov al, [MMAP_ENTRIES]
+    cmp al, 64
+    jge .done
+
+    ; Check if this was the last entry (EBX=0)
+    test ebx, ebx
+    jz .done
+
+    jmp .next_entry
+
+.mmap_failed:
+    ; Could be a non-fatal error, try to continue
+    cmp byte [MMAP_ENTRIES], 0
+    je mmap_error           ; No entries at all = fatal
+
+.done:
+    ; Store entry count at 0x7000
+    mov al, [MMAP_ENTRIES]
+    mov [0x7000], al
+    ret
+
 msg_load  db "Loading Stage 2...", 0x0d, 0x0a, 0
 msg_error db "Disk error!", 0
+msg_mmap  db "Memory map error!", 0
 
 BOOT_DRIVE db 0
+MMAP_ENTRIES db 0
 
 ; GDT
 gdt_start:
