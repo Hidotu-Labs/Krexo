@@ -98,8 +98,8 @@ int krexo_fb_init(krexo_fb_t *fb) {
 
   // Fill framebuffer info
   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode = gGop->Mode;
-  fb->base = (void *)mode->FrameBufferBase;
-  fb->size = mode->FrameBufferSize;
+  fb->base = (uint64_t)mode->FrameBufferBase;
+  fb->size = (uint64_t)mode->FrameBufferSize;
   fb->width = mode->Info->HorizontalResolution;
   fb->height = mode->Info->VerticalResolution;
   fb->pitch = mode->Info->PixelsPerScanLine * 4;
@@ -109,44 +109,5 @@ int krexo_fb_init(krexo_fb_t *fb) {
   return 0;
 }
 
-void krexo_fb_put_pixel(krexo_fb_t *fb, uint32_t x, uint32_t y, uint32_t color) {
-  if (x >= fb->width || y >= fb->height) return;
-  
-  uint32_t *pixel = (uint32_t *)((uint8_t *)fb->base + y * fb->pitch + x * 4);
-  
-  // Handle format conversion
-  if (fb->format == KREXO_FB_FORMAT_BGRX_8888) {
-    // Swap R and B
-    uint8_t r = (color >> 16) & 0xFF;
-    uint8_t b = color & 0xFF;
-    color = (color & 0xFF00FF00) | (b << 16) | r;
-  }
-  
-  *pixel = color;
-}
-
-void krexo_fb_fill_rect(krexo_fb_t *fb, uint32_t x, uint32_t y, 
-                        uint32_t w, uint32_t h, uint32_t color) {
-  for (uint32_t row = y; row < y + h && row < fb->height; row++) {
-    for (uint32_t col = x; col < x + w && col < fb->width; col++) {
-      krexo_fb_put_pixel(fb, col, row, color);
-    }
-  }
-}
-
-void krexo_fb_print_info(krexo_fb_t *fb) {
-  kprintf("Framebuffer Info:\n");
-  kprintf("  Base: %p\n", fb->base);
-  kprintf("  Size: %lu bytes\n", fb->size);
-  kprintf("  Resolution: %ux%u\n", fb->width, fb->height);
-  kprintf("  Pitch: %u bytes\n", fb->pitch);
-  kprintf("  BPP: %u\n", fb->bpp);
-  
-  const char *fmt_str;
-  switch (fb->format) {
-    case KREXO_FB_FORMAT_RGBX_8888: fmt_str = "RGBX8888"; break;
-    case KREXO_FB_FORMAT_BGRX_8888: fmt_str = "BGRX8888"; break;
-    default: fmt_str = "Unknown"; break;
-  }
-  kprintf("  Format: %s\n", fmt_str);
-}
+// krexo_fb_put_pixel, krexo_fb_fill_rect, and krexo_fb_print_info 
+// are now implemented in common/lib/fb.c

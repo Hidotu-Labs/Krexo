@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 void kprintf(const char* format, ...);
+void ksprintf(char* out, const char* format, ...);
 void kvprintf(const char* format, va_list args);
 
 // This is what each platform must implement

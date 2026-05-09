@@ -108,6 +108,7 @@ int krexo_mmap_init(krexo_mmap_t *mmap) {
     desc = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)desc + desc_size);
   }
   
+  mmap->key = (uint64_t)map_key;
   gBS->FreePool(map);
   return 0;
 }

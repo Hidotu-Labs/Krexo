@@ -31,6 +31,7 @@ typedef struct {
   krexo_mmap_entry_t *entries;
   size_t count;
   size_t capacity;
+  uint64_t key; // Platform-specific key (e.g., UEFI MapKey)
 } krexo_mmap_t;
 
 // Memory attributes flags
