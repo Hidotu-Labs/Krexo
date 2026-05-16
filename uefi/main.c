@@ -9,6 +9,7 @@
 #include <common/menu.h>
 #include <common/mmap.h>
 #include <common/request_handler.h>
+#include <common/limine_compat.h>
 
 extern int uefi_disk_init(krexo_disk_t *disk);
 void uefi_init_debug(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable);
@@ -19,18 +20,25 @@ static EFI_SYSTEM_TABLE *gST;
 
 static void uefi_delay_ms(int ms) { gST->BootServices->Stall(ms * 1000); }
 
+#include <common/keys.h>
+
 static int uefi_menu_get_key(void) {
   EFI_INPUT_KEY key;
   EFI_STATUS status = gST->ConIn->ReadKeyStroke(gST->ConIn, &key);
   if (status == EFI_SUCCESS) {
-    if (key.ScanCode == 0x01)
-      return 1; // Up
-    if (key.ScanCode == 0x02)
-      return 2; // Down
-    if (key.UnicodeChar == L'\r' || key.UnicodeChar == L'\n')
-      return 3; // Enter
+    if (key.ScanCode == 0x01) return KREXO_KEY_UP;
+    if (key.ScanCode == 0x02) return KREXO_KEY_DOWN;
+    if (key.ScanCode == 0x03) return KREXO_KEY_DOWN; // Sometimes Right is Down in some shells
+    if (key.ScanCode == 0x17) return KREXO_KEY_ESC;
+
+    if (key.UnicodeChar == L'\r' || key.UnicodeChar == L'\n') return KREXO_KEY_ENTER;
+    if (key.UnicodeChar == L'\b') return KREXO_KEY_BACKSPACE;
+
+    if (key.UnicodeChar >= 32 && key.UnicodeChar <= 126) {
+        return (int)key.UnicodeChar;
+    }
   }
-  return 0;
+  return KREXO_KEY_NONE;
 }
 
 static void k_memcpy(void *dest, const void *src, uint64_t n) {
@@ -95,8 +103,20 @@ efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
     k_memcpy(config.entries[0].kernel_path, "kernel.elf", 11);
   }
 
+  // Load Background Image if specified
+  uint8_t *bg_buffer = NULL;
+  if (config.background_image_path[0]) {
+    unsigned long long bg_size = 1024 * 1024 * 8; // 8MB Max for BG
+    void *tmp_bg;
+    if (SystemTable->BootServices->AllocatePool(EfiLoaderData, bg_size, &tmp_bg) == EFI_SUCCESS) {
+        if (uefi_read_file(config.background_image_path, tmp_bg, &bg_size) == 0) {
+            bg_buffer = (uint8_t *)tmp_bg;
+        }
+    }
+  }
+
   // INTERACTIVE MENU
-  int selected_idx = menu_loop(&fb, &config, uefi_menu_get_key, uefi_delay_ms);
+  int selected_idx = menu_loop(&fb, &config, uefi_menu_get_key, uefi_delay_ms, bg_buffer);
   krexo_boot_entry_t *entry = &config.entries[selected_idx];
 
   // LOAD SELECTED KERNEL
@@ -126,19 +146,42 @@ efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
     boot_info.mmap_base = (uint64_t)mmap.entries;
     boot_info.mmap_entries = mmap.count;
 
-    // SCAN FOR KREXO REQUESTS
-    requests_handle((void *)0x1000000, 0x100000, &fb);
+    // AUTO-DETECT PROTOCOL AND HANDLE REQUESTS
+    if (limine_detect((void *)0x1000000, 0x100000)) {
+      kprintf("\n[UEFI] Limine protocol detected!\n");
+      uint64_t limine_entry = 0;
+      limine_handle_requests((void *)0x1000000, 0x100000, &fb, &mmap,
+                             entry->cmdline, 0x1000000, &limine_entry);
 
-    // GET THE ABSOLUTE LAST KEY AND EXIT
-    UINTN MapSize = 0;
-    UINTN MapKey = 0;
-    UINTN DescriptorSize = 0;
-    UINT32 DescriptorVersion = 0;
-    SystemTable->BootServices->GetMemoryMap(
-        &MapSize, NULL, &MapKey, &DescriptorSize, &DescriptorVersion);
-    SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+      // Exit Boot Services before jumping
+      UINTN MapSize = 0, MapKey = 0, DescriptorSize = 0;
+      UINT32 DescriptorVersion = 0;
+      SystemTable->BootServices->GetMemoryMap(
+          &MapSize, NULL, &MapKey, &DescriptorSize, &DescriptorVersion);
+      SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
 
-    // JUMP!
+      if (limine_entry != 0) {
+        void(__attribute__((sysv_abi)) * lentry)(void) =
+            (void(__attribute__((sysv_abi)) *)(void))limine_entry;
+        lentry();
+      }
+      // Fall through to ELF entry if no Limine entry point override
+      void(__attribute__((sysv_abi)) * kernel_entry_l)(void) =
+          (void(__attribute__((sysv_abi)) *)(void))ehdr->entry;
+      kernel_entry_l();
+    } else {
+      // Native Krexo protocol
+      requests_handle((void *)0x1000000, 0x100000, &fb, &mmap, entry->cmdline);
+
+      // Exit Boot Services before jumping
+      UINTN MapSize = 0, MapKey = 0, DescriptorSize = 0;
+      UINT32 DescriptorVersion = 0;
+      SystemTable->BootServices->GetMemoryMap(
+          &MapSize, NULL, &MapKey, &DescriptorSize, &DescriptorVersion);
+      SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
+    }
+
+    // JUMP (Krexo protocol path)
     void(__attribute__((sysv_abi)) * kernel_entry)(krexo_boot_info_t *) =
         (void(__attribute__((sysv_abi)) *)(krexo_boot_info_t *))ehdr->entry;
 

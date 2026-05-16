@@ -11,7 +11,7 @@ CFLAGS_COMMON = -ffreestanding -fno-stack-protector -fno-stack-check -O2 -Iinclu
 CFLAGS_BIOS = $(CFLAGS_COMMON) -m32 -march=i386 -fno-pic
 LDFLAGS_BIOS = -m elf_i386 -T bios/link.ld
 
-CFLAGS_UEFI = -target x86_64-unknown-windows -fshort-wchar -mno-red-zone $(CFLAGS_COMMON) $(EDK2_INC)
+CFLAGS_UEFI = -target x86_64-unknown-windows -fshort-wchar -mno-red-zone -mno-stack-arg-probe $(CFLAGS_COMMON) $(EDK2_INC)
 LDFLAGS_UEFI = -subsystem:efi_application -entry:efi_main
 
 # Search for OVMF in common locations
@@ -45,7 +45,7 @@ common/lib/%_uefi.o: common/lib/%.c | check_edk2
 common/fs/%_uefi.o: common/fs/%.c | check_edk2
 	$(CC_UEFI) $(CFLAGS_UEFI) -c $< -o $@
 
-uefi_boot: uefi/main.o uefi/debug.o uefi/mmap.o uefi/gop.o uefi/disk.o common/lib/printf_uefi.o common/lib/fb_uefi.o common/lib/font_data_uefi.o common/fs/fat32_uefi.o common/lib/config_uefi.o common/lib/menu_uefi.o common/lib/requests_uefi.o
+uefi_boot: uefi/main.o uefi/debug.o uefi/mmap.o uefi/gop.o uefi/disk.o common/lib/printf_uefi.o common/lib/fb_uefi.o common/lib/font_data_uefi.o common/fs/fat32_uefi.o common/lib/config_uefi.o common/lib/menu_uefi.o common/lib/requests_uefi.o common/lib/bmp_uefi.o common/lib/limine_compat_uefi.o
 	$(LD_UEFI) $(LDFLAGS_UEFI) $^ -out:boot.efi
 
 # BIOS build
@@ -76,7 +76,7 @@ bios/entry.o: bios/entry.s
 bios/long_mode.o: bios/long_mode.s
 	$(AS) -f elf32 bios/long_mode.s -o $@
 
-bios/stage2.bin: bios/entry.o bios/stage2.o bios/long_mode.o bios/mmap.o bios/vbe.o bios/disk.o common/lib/fb_bios.o common/lib/font_data_bios.o common/fs/fat32_bios.o common/lib/printf_bios.o common/lib/config_bios.o common/lib/menu_bios.o common/lib/requests_bios.o
+bios/stage2.bin: bios/entry.o bios/stage2.o bios/long_mode.o bios/mmap.o bios/vbe.o bios/disk.o common/lib/fb_bios.o common/lib/font_data_bios.o common/fs/fat32_bios.o common/lib/printf_bios.o common/lib/config_bios.o common/lib/menu_bios.o common/lib/requests_bios.o common/lib/bmp_bios.o common/lib/limine_compat_bios.o
 	$(LD_BIOS) $(LDFLAGS_BIOS) $^ -o $@
 
 # Kernel Build
@@ -91,8 +91,12 @@ kernel/main.o: kernel/main.c
 common/lib/%_kernel.o: common/lib/%.c
 	$(CC_KERNEL) $(CFLAGS_KERNEL) -c $< -o $@
 
-kernel.elf: kernel/main.o common/lib/font_data_kernel.o
-	$(LD_KERNEL) $(LDFLAGS_KERNEL) $^ -o $@
+.PHONY: kernel.elf
+kernel.elf:
+	$(MAKE) -C barebones/kernel CC=$(CC_KERNEL) LD=$(LD_KERNEL) ARCH=x86_64
+	cp barebones/kernel/bin-x86_64/kernel kernel.elf
+
+
 
 bios_boot: bios/stage1.bin bios/stage2.bin
 	cat bios/stage1.bin bios/stage2.bin > boot.bin

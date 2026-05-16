@@ -17,7 +17,9 @@ SECTIONS
 
     .krexo_requests :
     {
+        KEEP(*(.krexo_requests_start))
         KEEP(*(.krexo_requests))
+        KEEP(*(.krexo_requests_end))
     }
 
     .data :

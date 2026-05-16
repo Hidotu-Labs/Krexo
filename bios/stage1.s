@@ -115,6 +115,12 @@ setup_vbe:
     mov [0x6008], ax
     mov al, [0x5019]   ; BPP
     mov [0x600a], al
+    mov al, [0x5020]   ; Red Field Position
+    mov [0x600b], al
+    mov al, [0x5022]   ; Green Field Position
+    mov [0x600c], al
+    mov al, [0x5024]   ; Blue Field Position
+    mov [0x600d], al
 
     mov ax, 0x4f02
     mov bx, 0x411b

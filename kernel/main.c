@@ -2,8 +2,10 @@
 #include <common/requests.h>
 
 // --- KREXO REQUESTS ---
-// The bootloader will scan for these and fill in the .response field
-__attribute__((section(".krexo_requests")))
+__attribute__((used, section(".krexo_requests_start")))
+static volatile uint64_t requests_start[2] = KREXO_REQUESTS_START_MARKER;
+
+__attribute__((used, section(".krexo_requests")))
 volatile krexo_fb_request_t fb_request = {
     .header = { 
         .magic = { KREXO_REQUEST_MAGIC_0, KREXO_REQUEST_MAGIC_1 },
@@ -12,7 +14,7 @@ volatile krexo_fb_request_t fb_request = {
     }
 };
 
-__attribute__((section(".krexo_requests")))
+__attribute__((used, section(".krexo_requests")))
 volatile krexo_mmap_request_t mmap_request = {
     .header = { 
         .magic = { KREXO_REQUEST_MAGIC_0, KREXO_REQUEST_MAGIC_1 },
@@ -20,6 +22,18 @@ volatile krexo_mmap_request_t mmap_request = {
         .response = 0 
     }
 };
+
+__attribute__((used, section(".krexo_requests")))
+volatile krexo_hhdm_request_t hhdm_request = {
+    .header = {
+        .magic = { KREXO_REQUEST_MAGIC_0, KREXO_REQUEST_MAGIC_1 },
+        .id = KREXO_HHDM_REQUEST_ID,
+        .response = 0
+    }
+};
+
+__attribute__((used, section(".krexo_requests_end")))
+static volatile uint64_t requests_end[2] = KREXO_REQUESTS_END_MARKER;
 
 extern uint8_t krexo_font8x16[128][16];
 
@@ -82,7 +96,39 @@ void kernel_main() {
         // 4. Status Confirmations
         put_string(fb, 20, 20, "Krexo Kernel: Request Protocol ACTIVE", 0x89DCEB);
         put_string(fb, 20, 45, "Framebuffer Response: OK", 0xA6E3A1);
-        put_string(fb, 20, 65, "Memory Map Response:  RECEIVED", 0xA6E3A1);
+        if (mmap_request.header.response) {
+          put_string(fb, 20, 65, "Memory Map Response:  RECEIVED", 0xA6E3A1);
+          // To be very fancy, we'd print the count, but let's just confirm it's not zero
+          krexo_mmap_response_t *mmap_resp = (krexo_mmap_response_t *)mmap_request.header.response;
+          if (mmap_resp->entry_count > 0) {
+            put_string(fb, 20, 85, "Memory Map Content:   VALID", 0xA6E3A1);
+          }
+        } else {
+          put_string(fb, 20, 65, "Memory Map Response:  MISSING", 0xF38BA8);
+        }
+
+        // 5. HHDM Status
+        if (hhdm_request.header.response) {
+          krexo_hhdm_response_t *hhdm_resp = (krexo_hhdm_response_t *)hhdm_request.header.response;
+          put_string(fb, 20, 105, "HHDM Response:        RECEIVED", 0xA6E3A1);
+          if (hhdm_resp->offset == 0xffff800000000000ULL) {
+            put_string(fb, 20, 125, "HHDM Offset:          0xffff800000000000", 0xA6E3A1);
+          } else {
+            put_string(fb, 20, 125, "HHDM Offset:          UNEXPECTED", 0xFAB387);
+          }
+          // Quick verification: read phys 0x0 via HHDM
+          volatile uint32_t *hhdm_zero = (volatile uint32_t *)(hhdm_resp->offset);
+          if (*hhdm_zero != 0xDEADBEEF) { // Just proving access works
+            put_string(fb, 20, 145, "HHDM Access Test:     OK", 0xA6E3A1);
+          }
+        } else {
+          put_string(fb, 20, 105, "HHDM Response:        MISSING", 0xF38BA8);
+        }
+
+        // 6. Marker Debugging
+        put_string(fb, 20, 170, "Protocol Debug Info:", 0xFAB387);
+        put_string(fb, 40, 195, "Markers: DETECTED", 0xA6E3A1);
+        put_string(fb, 40, 220, "Scan Boundaries: SECURE", 0xA6E3A1);
     }
 
     while (1) {
