@@ -27,6 +27,7 @@ void krexo_fb_draw_rect_outline(krexo_fb_t *fb, uint32_t x, uint32_t y,
 void krexo_fb_draw_rect_transparent(krexo_fb_t *fb, uint32_t x, uint32_t y,
                                     uint32_t w, uint32_t h, uint32_t color,
                                     uint8_t opacity);
+void krexo_fb_draw_noise_bg_rect(krexo_fb_t *fb, uint32_t x_start, uint32_t y_start, uint32_t w, uint32_t h, uint32_t base_color);
 void krexo_fb_draw_noise_bg(krexo_fb_t *fb, uint32_t base_color);
 void krexo_fb_draw_gradient(krexo_fb_t *fb, uint32_t color_top,
                             uint32_t color_bottom);
@@ -35,4 +36,9 @@ void krexo_fb_draw_string(krexo_fb_t *fb, uint32_t x, uint32_t y,
 void krexo_fb_draw_string_shadow(krexo_fb_t *fb, uint32_t x, uint32_t y,
                                  const char *str, uint32_t color,
                                  uint32_t shadow_color);
+void krexo_fb_draw_bmp_rect(krexo_fb_t *fb, uint8_t *data, uint32_t x_start, uint32_t y_start, uint32_t w, uint32_t h);
 void krexo_fb_draw_bmp(krexo_fb_t *fb, uint8_t *data);
+void krexo_fb_draw_png_rect(krexo_fb_t *fb, uint8_t *data, uint32_t x_start, uint32_t y_start, uint32_t w, uint32_t h);
+void krexo_fb_draw_png(krexo_fb_t *fb, uint8_t *data);
+void krexo_fb_draw_image_rect(krexo_fb_t *fb, uint8_t *data, uint32_t x_start, uint32_t y_start, uint32_t w, uint32_t h);
+void krexo_fb_draw_image(krexo_fb_t *fb, uint8_t *data);

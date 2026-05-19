@@ -7,8 +7,8 @@
 #define KREXO_REQUEST_MAGIC_0 0x2474fa8644a44516
 #define KREXO_REQUEST_MAGIC_1 0x2474fa8644a44517
 
-#define KREXO_REQUESTS_START_MARKER { 0x3a3c267b21e84a22, 0xa5e2c140d3f6b981 }
-#define KREXO_REQUESTS_END_MARKER { 0x5bdae12f86c2d49a, 0x9c4f7e21a30d5b68 }
+#define KREXO_REQUESTS_START_MARKER {0x3a3c267b21e84a22, 0xa5e2c140d3f6b981}
+#define KREXO_REQUESTS_END_MARKER {0x5bdae12f86c2d49a, 0x9c4f7e21a30d5b68}
 
 // Common header for all requests
 typedef struct {
@@ -48,11 +48,12 @@ typedef struct {
 #define KREXO_KERNEL_FILE_REQUEST_ID {0x619f72767073286f, 0xc1d5f29d2f21876d}
 
 typedef struct {
-    uint64_t cmdline; // Virtual address of the null-terminated command line string
+  uint64_t
+      cmdline; // Virtual address of the null-terminated command line string
 } krexo_kernel_file_response_t;
 
 typedef struct {
-    krexo_request_header_t header;
+  krexo_request_header_t header;
 } krexo_kernel_file_request_t;
 
 // --- HHDM (Higher Half Direct Map) Request ---
@@ -63,11 +64,11 @@ typedef struct {
 #define KREXO_HHDM_OFFSET 0xffff800000000000ULL
 
 typedef struct {
-    uint64_t offset; // The HHDM virtual offset
+  uint64_t offset; // The HHDM virtual offset
 } krexo_hhdm_response_t;
 
 typedef struct {
-    krexo_request_header_t header;
+  krexo_request_header_t header;
 } krexo_hhdm_request_t;
 
 #endif // KREXO_REQUESTS_H
