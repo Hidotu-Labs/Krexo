@@ -94,7 +94,7 @@ kernel.elf:
 	cp barebones/kernel/bin-x86_64/kernel kernel.elf
 
 # Running targets
-run_bios_full: bios_boot kernel.elf
+run_bios: bios_boot kernel.elf
 	bash scripts/mkdisk.sh
 	qemu-system-x86_64 -drive format=raw,file=krexo_disk.img -debugcon stdio
 

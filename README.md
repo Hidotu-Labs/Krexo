@@ -46,12 +46,12 @@ We are actively working on expanding Krexo's capabilities:
 
 **BIOS**:
 ```bash
-make clean && make run_bios_full
+make clean && make run_bios
 ```
 
 **UEFI**:
 ```bash
-make clean && make run_uefi_full
+make clean && make run_uefi
 ```
 
 ## Kernel Specification
