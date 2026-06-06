@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 static acpi_rsdp_t *g_rsdp = NULL;
+void *g_rsdp_ptr = NULL;
 
 static int memcmp(const void *s1, const void *s2, size_t n) {
   const uint8_t *p1 = s1, *p2 = s2;
@@ -16,7 +17,10 @@ static int memcmp(const void *s1, const void *s2, size_t n) {
   return 0;
 }
 
-void acpi_init(void *rsdp) { g_rsdp = (acpi_rsdp_t *)rsdp; }
+void acpi_init(void *rsdp) {
+  g_rsdp = (acpi_rsdp_t *)rsdp;
+  g_rsdp_ptr = rsdp;
+}
 
 void *acpi_find_table(const char *signature) {
   if (!g_rsdp) {
@@ -24,6 +28,7 @@ void *acpi_find_table(const char *signature) {
     for (uint8_t *p = (uint8_t *)0xE0000; p < (uint8_t *)0x100000; p += 16) {
       if (memcmp(p, "RSD PTR ", 8) == 0) {
         g_rsdp = (acpi_rsdp_t *)p;
+        g_rsdp_ptr = p;
         break;
       }
     }

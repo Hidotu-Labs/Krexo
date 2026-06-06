@@ -1,10 +1,10 @@
-# Krexo v1.2.2
+# Krexo v1.2.3
 
-Krexo is a high-performance x86_64 bootloader for BIOS and UEFI. It uses a request-based protocol to pass system information to the kernel, allowing for a decoupled architecture where the kernel defines its requirements via ELF sections.
+Krexo is a high-performance x86_64 bootloader for BIOS and UEFI. It uses a request-based protocol to pass system information to the kernel, allowing for a decoupled architecture where the kernel defines its requirements via ELF sections just like limine lol.
 
 ## Major Changes in v1.2.x
-- **Removed Limine compability**: IT IS NOT COMPATIBLE WITH LIMINE ANYMORE.
-- **Started SMP Support**: Started working on SMP Support
+- **Added DTB and 4-level paging support**: With this the kernel can automatically enable paging and dtb with only a request!
+- **SMP Support**: Finished SMP Support
 
 ## Features
 
@@ -12,15 +12,13 @@ Krexo is a high-performance x86_64 bootloader for BIOS and UEFI. It uses a reque
 - **Interactive Menu**: Fully configurable boot menu with automatic countdown and custom themes.
 - **Protocol Support**:
   - **Native Krexo**: A request-based interface declarations via ELF sections.
-  - **Limine Compat**: Support for Limine protocol requests (Framebuffer, Memory Map, HHDM, etc.).
 - **FAT32 Support**: Built-in stack for loading the kernel and `krexo.conf` from the boot partition.
 - **Memory Safety**: No-flicker UI using partial redraws (dirty stripes).
 
 ## Roadmap
 
-We are working on expanding Krexo's capabilities:
+Currently We are targetting:
 
-- **SMP Support**: Symmetrical Multiprocessing to wake up and manage multiple CPU cores.
 - **Multiboot2 Support**: Implementation of the Multiboot2 protocol for broader kernel interoperability.
 - **Linux-Boot**: Direct support for loading Linux kernels (bzImage) and initrd.
 - **Limine-Protocol**: Direct support for Limine protocol requests (Framebuffer, Memory Map, HHDM, etc.).
@@ -35,7 +33,7 @@ We are working on expanding Krexo's capabilities:
 - `include/`: Common headers for bootloader and kernel.
 - `barebones/`: Reference kernel implementations.
 
-## Build and Run
+## Build
 
 ### Dependencies
 - Toolchain: `nasm`, `x86_64-elf-gcc`, `clang`, `lld-link`

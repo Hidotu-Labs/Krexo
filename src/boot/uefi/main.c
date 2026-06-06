@@ -178,7 +178,31 @@ efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
     boot_info.mmap_entries = mmap.count;
 
     // Handle requests (Native Krexo protocol)
-    requests_handle((void *)0x1000000, 0x100000, &fb, &mmap, entry->cmdline);
+    // Look for DTB in UEFI configuration tables
+    void *dtb_ptr = NULL;
+    EFI_GUID dtb_guid = {0xb1b621d9,
+                         0xfc05,
+                         0x450a,
+                         {0x8d, 0x82, 0x89, 0x07, 0x34, 0xca, 0x8f, 0x71}};
+    for (UINTN i = 0; i < SystemTable->NumberOfTableEntries; i++) {
+      int match = 1;
+      for (int j = 0; j < 16; j++) {
+        if (((uint8_t *)&SystemTable->ConfigurationTable[i].VendorGuid)[j] !=
+            ((uint8_t *)&dtb_guid)[j]) {
+          match = 0;
+          break;
+        }
+      }
+      if (match) {
+        dtb_ptr = SystemTable->ConfigurationTable[i].VendorTable;
+        break;
+      }
+    }
+
+    uint64_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    requests_handle((void *)0x1000000, 0x100000, &fb, &mmap, entry->cmdline,
+                    (uint32_t)cr3, dtb_ptr);
 
     // Exit Boot Services before jumping
     UINTN MapSize = 0, MapKey = 0, DescriptorSize = 0;

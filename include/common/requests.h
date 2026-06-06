@@ -93,4 +93,66 @@ typedef struct {
   uint64_t flags;
 } krexo_smp_request_t;
 
+// --- Paging Mode Request ---
+#define KREXO_PAGING_MODE_REQUEST_ID {0x619f72767073286f, 0xc1d5f29d2f218770}
+
+#define KREXO_PAGING_MODE_X86_64_4LVL 0
+#define KREXO_PAGING_MODE_X86_64_5LVL 1
+
+typedef struct {
+  uint64_t mode;
+} krexo_paging_mode_response_t;
+
+typedef struct {
+  krexo_request_header_t header;
+  uint64_t mode;
+} krexo_paging_mode_request_t;
+
+// --- RSDP Request ---
+#define KREXO_RSDP_REQUEST_ID {0x619f72767073286f, 0xc1d5f29d2f218771}
+
+typedef struct {
+  uint64_t address;
+} krexo_rsdp_response_t;
+
+typedef struct {
+  krexo_request_header_t header;
+} krexo_rsdp_request_t;
+
+// --- Executable Address Request ---
+#define KREXO_EXECUTABLE_ADDRESS_REQUEST_ID                                    \
+  {0x619f72767073286f, 0xc1d5f29d2f218772}
+
+typedef struct {
+  uint64_t physical_base;
+  uint64_t virtual_base;
+} krexo_executable_address_response_t;
+
+typedef struct {
+  krexo_request_header_t header;
+} krexo_executable_address_request_t;
+
+// --- DTB Request ---
+#define KREXO_DTB_REQUEST_ID {0x619f72767073286f, 0xc1d5f29d2f218773}
+
+typedef struct {
+  uint64_t address;
+} krexo_dtb_response_t;
+
+typedef struct {
+  krexo_request_header_t header;
+} krexo_dtb_request_t;
+
+// --- Base Revision Request ---
+#define KREXO_BASE_REVISION_REQUEST_ID {0x619f72767073286f, 0xc1d5f29d2f218774}
+
+typedef struct {
+  uint64_t revision;
+} krexo_base_revision_response_t;
+
+typedef struct {
+  krexo_request_header_t header;
+  uint64_t revision;
+} krexo_base_revision_request_t;
+
 #endif // KREXO_REQUESTS_H

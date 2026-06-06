@@ -32,6 +32,16 @@ volatile krexo_hhdm_request_t hhdm_request = {
     }
 };
 
+__attribute__((used, section(".krexo_requests")))
+volatile krexo_paging_mode_request_t paging_request = {
+    .header = {
+        .magic = { KREXO_REQUEST_MAGIC_0, KREXO_REQUEST_MAGIC_1 },
+        .id = KREXO_PAGING_MODE_REQUEST_ID,
+        .response = 0
+    },
+    .mode = KREXO_PAGING_MODE_X86_64_4LVL
+};
+
 __attribute__((used, section(".krexo_requests_end")))
 static volatile uint64_t requests_end[2] = KREXO_REQUESTS_END_MARKER;
 
@@ -125,10 +135,23 @@ void kernel_main() {
           put_string(fb, 20, 105, "HHDM Response:        MISSING", 0xF38BA8);
         }
 
-        // 6. Marker Debugging
-        put_string(fb, 20, 170, "Protocol Debug Info:", 0xFAB387);
-        put_string(fb, 40, 195, "Markers: DETECTED", 0xA6E3A1);
-        put_string(fb, 40, 220, "Scan Boundaries: SECURE", 0xA6E3A1);
+        // 6. Paging Mode Status
+        if (paging_request.header.response) {
+          krexo_paging_mode_response_t *paging_resp = (krexo_paging_mode_response_t *)paging_request.header.response;
+          put_string(fb, 20, 145, "Paging Mode Response: RECEIVED", 0xA6E3A1);
+          if (paging_resp->mode == KREXO_PAGING_MODE_X86_64_4LVL) {
+            put_string(fb, 20, 165, "Mode:                 x86_64 4-Level", 0xA6E3A1);
+          } else {
+            put_string(fb, 20, 165, "Mode:                 UNKNOWN", 0xFAB387);
+          }
+        } else {
+          put_string(fb, 20, 145, "Paging Mode Response: MISSING", 0xF38BA8);
+        }
+
+        // 7. Marker Debugging
+        put_string(fb, 20, 195, "Protocol Debug Info:", 0xFAB387);
+        put_string(fb, 40, 220, "Markers: DETECTED", 0xA6E3A1);
+        put_string(fb, 40, 245, "Scan Boundaries: SECURE", 0xA6E3A1);
     }
 
     while (1) {

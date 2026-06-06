@@ -2,6 +2,7 @@
 #include <common/fb.h>
 #include <common/kprint.h>
 #include <common/requests.h>
+#include <common/smp.h>
 #include <stddef.h>
 
 // A simple bump allocator for responses in a safe region
@@ -17,10 +18,12 @@ static void *allocate_response(size_t size) {
 }
 
 // Forward declaration for SMP discovery
-static uint32_t smp_discover_cpus(krexo_smp_info_t **out_cpus, uint32_t *bsp_id);
+static uint32_t smp_discover_cpus(krexo_smp_info_t **out_cpus,
+                                  uint32_t *bsp_id);
 
 void requests_handle(void *kernel_start, size_t kernel_size, krexo_fb_t *fb,
-                     krexo_mmap_t *mmap, const char *cmdline) {
+                     krexo_mmap_t *mmap, const char *cmdline, uint32_t pml4,
+                     void *dtb_ptr) {
   uint64_t *ptr = (uint64_t *)kernel_start;
   size_t count = kernel_size / 8;
 
@@ -128,9 +131,98 @@ void requests_handle(void *kernel_start, size_t kernel_size, krexo_fb_t *fb,
         resp->cpu_count = cpu_count;
         resp->bsp_lapic_id = bsp_id;
         resp->cpus = cpus;
+
+        // Wake them up!
+        smp_wakeup_aps(cpus, cpu_count, bsp_id, pml4);
+
         ptr[i + 4] = (uint64_t)(uintptr_t)resp;
         kprintf("[BOOT] SMP request fulfilled: %d CPUs found (BSP ID: %d)\n",
                 (int)cpu_count, (int)bsp_id);
+      }
+
+      // Paging Mode Request
+      uint64_t paging_id[] = KREXO_PAGING_MODE_REQUEST_ID;
+      if (id_0 == paging_id[0] && id_1 == paging_id[1]) {
+        krexo_paging_mode_response_t *resp =
+            allocate_response(sizeof(krexo_paging_mode_response_t));
+        // Current bootloader only supports 4-level paging
+        resp->mode = KREXO_PAGING_MODE_X86_64_4LVL;
+        ptr[i + 4] = (uint64_t)(uintptr_t)resp;
+        kprintf("[BOOT] Paging mode request fulfilled: 4-level x86_64\n");
+      }
+
+      // RSDP Request
+      uint64_t rsdp_id[] = KREXO_RSDP_REQUEST_ID;
+      if (id_0 == rsdp_id[0] && id_1 == rsdp_id[1]) {
+        krexo_rsdp_response_t *resp =
+            allocate_response(sizeof(krexo_rsdp_response_t));
+        acpi_find_table("APIC"); // ensure scan
+        extern void *g_rsdp_ptr;
+        resp->address = (uint64_t)(uintptr_t)g_rsdp_ptr;
+        ptr[i + 4] = (uint64_t)(uintptr_t)resp;
+        kprintf("[BOOT] RSDP request fulfilled: 0x%x%x\n",
+                (uint32_t)(resp->address >> 32), (uint32_t)resp->address);
+      }
+
+      // Executable Address Request
+      uint64_t exec_id[] = KREXO_EXECUTABLE_ADDRESS_REQUEST_ID;
+      if (id_0 == exec_id[0] && id_1 == exec_id[1]) {
+        krexo_executable_address_response_t *resp =
+            allocate_response(sizeof(krexo_executable_address_response_t));
+        resp->physical_base = 0x1000000;
+        resp->virtual_base = (uintptr_t)kernel_start;
+        ptr[i + 4] = (uint64_t)(uintptr_t)resp;
+        kprintf("[BOOT] Executable address request fulfilled\n");
+      }
+
+      // DTB Request
+      uint64_t dtb_id[] = KREXO_DTB_REQUEST_ID;
+      if (id_0 == dtb_id[0] && id_1 == dtb_id[1]) {
+        krexo_dtb_response_t *resp =
+            allocate_response(sizeof(krexo_dtb_response_t));
+        resp->address = (uint64_t)(uintptr_t)dtb_ptr;
+        ptr[i + 4] = (uint64_t)(uintptr_t)resp;
+
+        if (dtb_ptr) {
+          kprintf("[BOOT] DTB request fulfilled: 0x%x\n", (uint32_t)dtb_ptr);
+        } else {
+          kprintf("[BOOT] DTB request fulfilled: NULL\n");
+        }
+      }
+
+      // Base Revision Request
+      uint64_t rev_id[] = KREXO_BASE_REVISION_REQUEST_ID;
+      if (id_0 == rev_id[0] && id_1 == rev_id[1]) {
+        krexo_base_revision_response_t *resp =
+            allocate_response(sizeof(krexo_base_revision_response_t));
+        resp->revision = 0;
+        ptr[i + 4] = (uint64_t)(uintptr_t)resp;
+
+        // Rev check
+        uint64_t kernel_rev = ptr[i + 5]; // The 'revision' field in the request
+        if (kernel_rev > 0) {
+          kprintf("[BOOT] ERROR: Kernel requires protocol revision %d, but "
+                  "bootloader provides 0\n",
+                  (int)kernel_rev);
+          while (1)
+            __asm__("hlt");
+        }
+
+        kprintf("[BOOT] Base revision request fulfilled: 0\n");
+      }
+    }
+  }
+
+  // 3. STRICT CHECK: Ensure all requests were fulfilled
+  for (size_t i = start_index; i < end_index; i++) {
+    if (ptr[i] == KREXO_REQUEST_MAGIC_0 &&
+        ptr[i + 1] == KREXO_REQUEST_MAGIC_1) {
+      if (ptr[i + 4] == 0) {
+        kprintf("[BOOT] FATAL ERROR: Unfulfilled request (ID: 0x%x...)\n",
+                (uint32_t)ptr[i + 2]);
+        kprintf("[BOOT] Non-partial Handover is active. HALTING.\n");
+        while (1)
+          __asm__("hlt");
       }
     }
   }

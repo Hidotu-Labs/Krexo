@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 void requests_handle(void *kernel_start, size_t kernel_size, krexo_fb_t *fb,
-                     krexo_mmap_t *mmap, const char *cmdline);
+                     krexo_mmap_t *mmap, const char *cmdline, uint32_t pml4,
+                     void *dtb_ptr);
 
 #endif

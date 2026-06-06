@@ -40,9 +40,15 @@ UEFI_OBJS = src/boot/uefi/main.o src/boot/uefi/debug.o src/boot/uefi/mmap.o src/
            src/common/lib/printf_uefi.o src/common/lib/fb_uefi.o src/common/lib/font_data_uefi.o \
            src/common/fs/fat32_uefi.o src/common/lib/config_uefi.o src/common/lib/menu_uefi.o \
            src/common/lib/requests_uefi.o src/common/lib/bmp_uefi.o src/common/lib/png_uefi.o \
-           src/common/lib/image_uefi.o src/common/lib/acpi_uefi.o
+           src/common/lib/image_uefi.o src/common/lib/acpi_uefi.o src/common/lib/smp_uefi.o
 
-src/boot/uefi/%.o: src/boot/uefi/%.c | check_edk2
+src/boot/common/trampoline.bin: src/boot/common/trampoline.s
+	nasm -f bin $< -o $@
+
+include/common/trampoline_data.h: src/boot/common/trampoline.bin
+	xxd -i $< > $@
+
+src/boot/uefi/%.o: src/boot/uefi/%.c | check_edk2 include/common/trampoline_data.h
 	$(CC_UEFI) $(CFLAGS_UEFI) -c $< -o $@
 
 src/common/lib/%_uefi.o: src/common/lib/%.c | check_edk2
@@ -59,9 +65,10 @@ BIOS_OBJS = src/boot/bios/entry.o src/boot/bios/stage2.o src/boot/bios/long_mode
            src/boot/bios/vbe.o src/boot/bios/disk.o src/common/lib/fb_bios.o src/common/lib/font_data_bios.o \
            src/common/fs/fat32_bios.o src/common/lib/printf_bios.o src/common/lib/config_bios.o \
            src/common/lib/menu_bios.o src/common/lib/requests_bios.o src/common/lib/bmp_bios.o \
-           src/common/lib/png_bios.o src/common/lib/image_bios.o src/common/lib/acpi_bios.o
+           src/common/lib/png_bios.o src/common/lib/image_bios.o src/common/lib/acpi_bios.o \
+           src/common/lib/smp_bios.o
 
-src/boot/bios/%.o: src/boot/bios/%.c
+src/boot/bios/%.o: src/boot/bios/%.c | include/common/trampoline_data.h
 	$(CC_BIOS) $(CFLAGS_BIOS) -c $< -o $@
 
 src/boot/bios/%.o: src/boot/bios/%.s

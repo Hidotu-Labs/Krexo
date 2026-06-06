@@ -213,9 +213,17 @@ void stage2_main(uint32_t boot_drive) {
         boot_info->mmap_base = 0x5000;
         boot_info->mmap_entries = mmap.count;
 
+        // Try to load a DTB file if it exists
+        void *dtb_ptr = NULL;
+        uint32_t dtb_cluster, dtb_size;
+        if (fat32_find_file("dtb.bin", &dtb_cluster, &dtb_size) == 0) {
+          dtb_ptr = (void *)0x4000000; // Load to high memory
+          fat32_read_file(dtb_cluster, dtb_ptr, dtb_size);
+        }
+
         // Handle requests (Native Krexo protocol)
-        requests_handle((void *)0x1000000, 0x100000, &fb, &mmap,
-                        entry->cmdline);
+        requests_handle((void *)0x1000000, 0x100000, &fb, &mmap, entry->cmdline,
+                        PML4_ADDR, dtb_ptr);
 
         debug_print("Jumping to ");
         debug_print(entry->name);
