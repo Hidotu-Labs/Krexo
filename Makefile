@@ -40,7 +40,7 @@ UEFI_OBJS = src/boot/uefi/main.o src/boot/uefi/debug.o src/boot/uefi/mmap.o src/
            src/common/lib/printf_uefi.o src/common/lib/fb_uefi.o src/common/lib/font_data_uefi.o \
            src/common/fs/fat32_uefi.o src/common/lib/config_uefi.o src/common/lib/menu_uefi.o \
            src/common/lib/requests_uefi.o src/common/lib/bmp_uefi.o src/common/lib/png_uefi.o \
-           src/common/lib/image_uefi.o src/common/lib/limine_compat_uefi.o
+           src/common/lib/image_uefi.o src/common/lib/acpi_uefi.o
 
 src/boot/uefi/%.o: src/boot/uefi/%.c | check_edk2
 	$(CC_UEFI) $(CFLAGS_UEFI) -c $< -o $@
@@ -59,7 +59,7 @@ BIOS_OBJS = src/boot/bios/entry.o src/boot/bios/stage2.o src/boot/bios/long_mode
            src/boot/bios/vbe.o src/boot/bios/disk.o src/common/lib/fb_bios.o src/common/lib/font_data_bios.o \
            src/common/fs/fat32_bios.o src/common/lib/printf_bios.o src/common/lib/config_bios.o \
            src/common/lib/menu_bios.o src/common/lib/requests_bios.o src/common/lib/bmp_bios.o \
-           src/common/lib/png_bios.o src/common/lib/image_bios.o src/common/lib/limine_compat_bios.o
+           src/common/lib/png_bios.o src/common/lib/image_bios.o src/common/lib/acpi_bios.o
 
 src/boot/bios/%.o: src/boot/bios/%.c
 	$(CC_BIOS) $(CFLAGS_BIOS) -c $< -o $@
@@ -89,8 +89,10 @@ LD_KERNEL = x86_64-elf-ld
 CFLAGS_KERNEL = -ffreestanding -O2 -mcmodel=large -mno-red-zone -Iinclude -fno-stack-protector -fno-stack-check
 LDFLAGS_KERNEL = -T barebones/kernel/linker-scripts/x86_64.ld -nostdlib
 
-kernel.elf:
+barebones/kernel/bin-x86_64/kernel:
 	$(MAKE) -C barebones/kernel CC=$(CC_KERNEL) LD=$(LD_KERNEL) ARCH=x86_64
+
+kernel.elf: barebones/kernel/bin-x86_64/kernel
 	cp barebones/kernel/bin-x86_64/kernel kernel.elf
 
 # Running targets

@@ -69,7 +69,7 @@ void menu_draw(krexo_fb_t *fb, krexo_config_t *config, int selected,
     krexo_fb_fill_rect(fb, box_x, box_y, box_w, 35, config->ui_menu_bg);
     krexo_fb_draw_rect_outline(fb, box_x, box_y, box_w, 35, config->ui_menu_border);
     krexo_fb_draw_string(fb, box_x + 20, box_y + 10, "KREXO BOOT MANAGER", config->ui_menu_title);
-    menu_draw_centered(fb, fb->height - 60, "Navigation: UP/DOWN / ENTER / E (Edit)", config->ui_menu_help);
+    menu_draw_centered(fb, fb->height - 60, "Navigation: UP/DOWN / ENTER / E (Edit) / S (Setup)", config->ui_menu_help);
 
     last_selected = -1; 
     last_timeout = -1;
@@ -215,6 +215,8 @@ int menu_loop(krexo_fb_t *fb, krexo_config_t *config, int (*get_key)(void),
         } else if (key == KREXO_KEY_EDIT) {
           menu_edit_entry(fb, config, selected, get_key, delay_ms, bg_data);
           last_selected = -2; // Force redraw and flag as forced
+        } else if (key == KREXO_KEY_SETUP) {
+          return -2;
         }
         break; // State changed, exit polling inner loop to redraw
       }

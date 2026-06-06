@@ -8,5 +8,6 @@
 #define KREXO_KEY_ESC       4
 #define KREXO_KEY_BACKSPACE 5
 #define KREXO_KEY_EDIT      'e'
+#define KREXO_KEY_SETUP     's'
 
 #endif // KREXO_KEYS_H

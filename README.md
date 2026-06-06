@@ -1,11 +1,10 @@
-# Krexo v1.2.1
+# Krexo v1.2.2
 
 Krexo is a high-performance x86_64 bootloader for BIOS and UEFI. It uses a request-based protocol to pass system information to the kernel, allowing for a decoupled architecture where the kernel defines its requirements via ELF sections.
 
 ## Major Changes in v1.2.x
-- **Limine Compatibility**: Started support for Limine protocol requests (Framebuffer, Memory Map, HHDM, etc.).
-- **UI**: Enhanced boot menu with background image support (BMP/PNG) and flicker-free rendering.
-- **Memory Management**: Improved memory map generation and HHDM support for both protocols.
+- **Removed Limine compability**: IT IS NOT COMPATIBLE WITH LIMINE ANYMORE.
+- **Started SMP Support**: Started working on SMP Support
 
 ## Features
 

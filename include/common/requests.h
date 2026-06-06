@@ -71,4 +71,26 @@ typedef struct {
   krexo_request_header_t header;
 } krexo_hhdm_request_t;
 
+// --- SMP (Symmetric Multiprocessing) Request ---
+#define KREXO_SMP_REQUEST_ID {0x619f72767073286f, 0xc1d5f29d2f21876f}
+
+typedef struct {
+  uint32_t processor_id;
+  uint32_t lapic_id;
+  uint64_t reserved;
+  uint64_t goto_address; // Kernel sets this; AP jumps here
+  uint64_t extra_argument;
+} krexo_smp_info_t;
+
+typedef struct {
+  uint64_t cpu_count;
+  uint32_t bsp_lapic_id;
+  krexo_smp_info_t *cpus;
+} krexo_smp_response_t;
+
+typedef struct {
+  krexo_request_header_t header;
+  uint64_t flags;
+} krexo_smp_request_t;
+
 #endif // KREXO_REQUESTS_H

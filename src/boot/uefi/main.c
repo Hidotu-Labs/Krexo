@@ -6,7 +6,6 @@
 #include <common/fb.h>
 #include <common/fs/fat32.h>
 #include <common/kprint.h>
-#include <common/limine_compat.h>
 #include <common/menu.h>
 #include <common/mmap.h>
 #include <common/request_handler.h>
@@ -133,6 +132,22 @@ efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
   // INTERACTIVE MENU
   int selected_idx =
       menu_loop(&fb, &config, uefi_menu_get_key, uefi_delay_ms, bg_buffer);
+
+  if (selected_idx == -2) {
+    kprintf("[UEFI] Rebooting to Firmware Setup...\n");
+    UINT64 indications = 0x0000000000000001; // EFI_OS_INDICATIONS_BOOT_TO_FW_UI
+    EFI_GUID global_guid = {0x8be4df61,
+                            0x93ca,
+                            0x11d2,
+                            {0xaa, 0x0d, 0x00, 0xe0, 0x98, 0x03, 0x2b, 0x8c}};
+    SystemTable->RuntimeServices->SetVariable(
+        L"OsIndications", &global_guid,
+        0x00000001 | 0x00000002 | 0x00000004, // NV | BS | RT
+        sizeof(indications), &indications);
+    SystemTable->RuntimeServices->ResetSystem(EfiResetCold, EFI_SUCCESS, 0,
+                                              NULL);
+  }
+
   krexo_boot_entry_t *entry = &config.entries[selected_idx];
 
   // LOAD SELECTED KERNEL
@@ -162,40 +177,15 @@ efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable) {
     boot_info.mmap_base = (uint64_t)mmap.entries;
     boot_info.mmap_entries = mmap.count;
 
-    // AUTO-DETECT PROTOCOL AND HANDLE REQUESTS
-    if (limine_detect((void *)0x1000000, 0x100000)) {
-      kprintf("\n[UEFI] Limine protocol detected!\n");
-      uint64_t limine_entry = 0;
-      limine_handle_requests((void *)0x1000000, 0x100000, &fb, &mmap,
-                             entry->cmdline, 0x1000000, &limine_entry);
+    // Handle requests (Native Krexo protocol)
+    requests_handle((void *)0x1000000, 0x100000, &fb, &mmap, entry->cmdline);
 
-      // Exit Boot Services before jumping
-      UINTN MapSize = 0, MapKey = 0, DescriptorSize = 0;
-      UINT32 DescriptorVersion = 0;
-      SystemTable->BootServices->GetMemoryMap(
-          &MapSize, NULL, &MapKey, &DescriptorSize, &DescriptorVersion);
-      SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
-
-      if (limine_entry != 0) {
-        void(__attribute__((sysv_abi)) * lentry)(void) =
-            (void(__attribute__((sysv_abi)) *)(void))limine_entry;
-        lentry();
-      }
-      // Fall through to ELF entry if no Limine entry point override
-      void(__attribute__((sysv_abi)) * kernel_entry_l)(void) =
-          (void(__attribute__((sysv_abi)) *)(void))ehdr->entry;
-      kernel_entry_l();
-    } else {
-      // Native Krexo protocol
-      requests_handle((void *)0x1000000, 0x100000, &fb, &mmap, entry->cmdline);
-
-      // Exit Boot Services before jumping
-      UINTN MapSize = 0, MapKey = 0, DescriptorSize = 0;
-      UINT32 DescriptorVersion = 0;
-      SystemTable->BootServices->GetMemoryMap(
-          &MapSize, NULL, &MapKey, &DescriptorSize, &DescriptorVersion);
-      SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
-    }
+    // Exit Boot Services before jumping
+    UINTN MapSize = 0, MapKey = 0, DescriptorSize = 0;
+    UINT32 DescriptorVersion = 0;
+    SystemTable->BootServices->GetMemoryMap(
+        &MapSize, NULL, &MapKey, &DescriptorSize, &DescriptorVersion);
+    SystemTable->BootServices->ExitBootServices(ImageHandle, MapKey);
 
     // JUMP (Krexo protocol path)
     void(__attribute__((sysv_abi)) * kernel_entry)(krexo_boot_info_t *) =

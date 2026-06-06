@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 #include <common/config.h>
-#include <common/limine_compat.h>
 #include <common/menu.h>
 #include <common/request_handler.h>
 
@@ -174,6 +173,19 @@ void stage2_main(uint32_t boot_drive) {
       // INTERACTIVE MENU
       int selected_idx =
           menu_loop(&fb, &config, bios_get_key, bios_delay_ms, bg_buffer);
+
+      if (selected_idx == -2) {
+        // Pulse reset line via keyboard controller
+        while (inb(0x64) & 2)
+          ;
+        __asm__ volatile("outb %0, $0x64" : : "a"((uint8_t)0xFE));
+        // Fallback: Triple fault
+        __asm__ volatile("lidt %0" : : "m"((uint16_t[3]){0, 0, 0}));
+        __asm__ volatile("int $3");
+        while (1)
+          ;
+      }
+
       krexo_boot_entry_t *entry = &config.entries[selected_idx];
 
       uint32_t cluster, size;
@@ -201,23 +213,9 @@ void stage2_main(uint32_t boot_drive) {
         boot_info->mmap_base = 0x5000;
         boot_info->mmap_entries = mmap.count;
 
-        // AUTO-DETECT PROTOCOL AND HANDLE REQUESTS
-        if (limine_detect((void *)0x1000000, 0x100000)) {
-          debug_print("Limine protocol detected!\n");
-          uint64_t limine_entry = 0;
-          limine_handle_requests((void *)0x1000000, 0x100000, &fb, &mmap,
-                                 entry->cmdline, 0x1000000, &limine_entry);
-          if (limine_entry != 0) {
-            // Limine entry point override
-            debug_print("Using Limine entry point\n");
-            switch_to_long_mode(PML4_ADDR, (uint32_t)limine_entry,
-                                (uint32_t)boot_info);
-          }
-        } else {
-          // Native Krexo protocol
-          requests_handle((void *)0x1000000, 0x100000, &fb, &mmap,
-                          entry->cmdline);
-        }
+        // Handle requests (Native Krexo protocol)
+        requests_handle((void *)0x1000000, 0x100000, &fb, &mmap,
+                        entry->cmdline);
 
         debug_print("Jumping to ");
         debug_print(entry->name);
